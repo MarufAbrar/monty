@@ -1,58 +1,41 @@
 #include "monty.h"
-#define BUFSIZE 64
 
-char *operand;
+vars_t *element;
 
 /**
- * main - monty interpreter
- * @argc: int
- * @argv: list of arguments
- * Return: nothing
- */
-int main(int argc, char const *argv[])
+  * main - Entry Point
+  * @argc: Number of arguments
+  * @argv: Arguments names
+  * Return: 0 on success, exit on failures
+  */
+int main(int argc, char **argv)
 {
-	line_t *lines;
-	char **line;
-	int line_number;
-	stack_t *stack;
-	char *content;
-	void (*func)(stack_t**, unsigned int);
+	size_t n = 0;
+	vars_t temp = {0, NULL, NULL, NULL, NULL, NULL, 1};
 
-	stack = NULL;
+	element = &temp;
+	element->fname = argv[1];
+	if (argc != 2)
+		exit_function(16);
 
-	if (argc == 1)
+	element->fp = fopen(argv[1], "r");
+	if (element->fp == NULL)
+		exit_function(1);
+
+	for (; getline(&(element->buf), &n, element->fp) != EOF;
+		element->line_number++)
 	{
-		fprintf(stderr, "USAGE: monty file\n");
-		exit(EXIT_FAILURE);
+		element->tokened = malloc(sizeof(char *) * 2);
+		if (element->tokened == NULL)
+			exit_function(3);
+		get_tokens(element->buf);
+		opcode_search();
+		free_buffer();
+		free_token();
 	}
-	lines = textfile_to_array(argv[1]);
-	if (lines == NULL)
-		return (0);
-
-	line_number = 0;
-	while ((lines + line_number)->content != NULL)
-	{
-		content = (lines + line_number)->content;
-		line = split_line(content);
-		operand = line[1];
-
-		func = get_op_func(line[0]);
-		if (func == NULL)
-		{
-			/*TODO: Refactor: Edit more efifcient way to free memory on exit*/
-			fprintf(stderr, "L%d: unknown instruction %s\n", line_number + 1, line[0]);
-			free(line);
-			free_stack(stack);
-			free_lines(lines);
-			exit(EXIT_FAILURE);
-		}
-
-		func(&stack, line_number + 1);
-		free(line);
-		line_number++;
-	}
-
-	free_stack(stack);
-	free_lines(lines);
+	free_buffer();
+	free_list(element->head);
+	free_token();
+	fclose(element->fp);
 	return (0);
 }
